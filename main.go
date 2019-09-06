@@ -18,7 +18,7 @@ import (
 
 func main() {
 	domains := flag.String("d", "", "file containing list of domains or ip addresses seperated by newlines")
-	workers := flag.Uint("c", uint(runtime.NumCPU()), "number of concurrent quests")
+	workers := flag.Uint("c", uint(runtime.NumCPU()), "number of concurrent requests")
 	timeout := flag.Uint("t", 5, "timeout in seconds")
 	portList := flag.String("p", "80,433", "comma seperated list of ports to probe")
 	host := flag.String("h", "", "host header")

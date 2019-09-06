@@ -8,7 +8,7 @@ Usage of pokehttp:
     -a string
         user-agent header to use (default "pokehttp: https://github.com/bruston/pokehttp")
     -c uint
-        number of concurrent quests (default 6)
+        number of concurrent requests (default 6)
     -ck string
         add a custom header to all requests (key)
     -cv string
