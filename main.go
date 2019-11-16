@@ -2,9 +2,11 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -65,11 +67,11 @@ func main() {
 		go func() {
 			for v := range work {
 				if strings.HasPrefix(v, "http") {
-					code, title, err := doReq(client, v, *host, *forwarded, *customKey, *customVal, *userAgent)
+					code, size, title, err := doReq(client, v, *host, *forwarded, *customKey, *customVal, *userAgent)
 					if err != nil {
 						continue
 					}
-					fmt.Printf("%s %d %s\n", v, code, title)
+					fmt.Printf("%s %d %d %s\n", v, code, size, title)
 					continue
 				}
 				for _, port := range ports {
@@ -83,11 +85,11 @@ func main() {
 						dst = append(dst, []string{fmt.Sprintf("http://%s:%s", v, port), fmt.Sprintf("https://%s:%s", v, port)}...)
 					}
 					for _, url := range dst {
-						code, title, err := doReq(client, url, *host, *forwarded, *customKey, *customVal, *userAgent)
+						code, size, title, err := doReq(client, url, *host, *forwarded, *customKey, *customVal, *userAgent)
 						if err != nil {
 							continue
 						}
-						fmt.Printf("%s %d %s\n", url, code, title)
+						fmt.Printf("%s %d %d %s\n", url, code, size, title)
 					}
 				}
 			}
@@ -107,10 +109,10 @@ func cleanPorts(p string) []string {
 	return ports
 }
 
-func doReq(client *http.Client, url, host, forwarded, customKey, customVal, userAgent string) (int, string, error) {
+func doReq(client *http.Client, url, host, forwarded, customKey, customVal, userAgent string) (int, int, string, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return 0, "", err
+		return 0, 0, "", err
 	}
 	if host != "" {
 		req.Host = host
@@ -124,16 +126,21 @@ func doReq(client *http.Client, url, host, forwarded, customKey, customVal, user
 	req.Header.Set("User-Agent", userAgent)
 	resp, err := client.Do(req)
 	if err != nil {
-		return 0, "", err
+		return 0, 0, "", err
 	}
 	defer resp.Body.Close()
 	status := resp.StatusCode
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return 0, "", err
+		return 0, 0, "", err
+	}
+	size := len(b)
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(b))
+	if err != nil {
+		return 0, 0, "", err
 	}
 	title := doc.Find("title").Text()
 	title = strings.Replace(title, "\r\n", "", -1)
 	title = strings.Replace(title, "\n", "", -1)
-	return status, title, nil
+	return status, size, title, nil
 }
