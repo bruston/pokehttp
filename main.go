@@ -52,16 +52,24 @@ func main() {
 		close(work)
 	}()
 
+	client := &http.Client{
+		Timeout: time.Second * time.Duration(*timeout),
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	transport := &http.Transport{
+		MaxIdleConns:      30,
+		IdleConnTimeout:   time.Second,
+		DisableKeepAlives: true,
+	}
+	if *insecure {
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+	client.Transport = transport
+
 	ports := cleanPorts(*portList)
 	wg := &sync.WaitGroup{}
-
-	client := &http.Client{Timeout: time.Second * time.Duration(*timeout)}
-	if *insecure {
-		client.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
-	}
-
 	for i := 0; i < int(*workers); i++ {
 		wg.Add(1)
 		go func() {
@@ -124,6 +132,8 @@ func doReq(client *http.Client, url, host, forwarded, customKey, customVal, user
 		req.Header.Set(customKey, customVal)
 	}
 	req.Header.Set("User-Agent", userAgent)
+	req.Header.Add("Connection", "close")
+	req.Close = true
 	resp, err := client.Do(req)
 	if err != nil {
 		return 0, 0, "", err
