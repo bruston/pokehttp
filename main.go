@@ -22,13 +22,14 @@ func main() {
 	domains := flag.String("d", "", "file containing list of domains or ip addresses seperated by newlines")
 	workers := flag.Uint("c", uint(runtime.NumCPU()), "number of concurrent requests")
 	timeout := flag.Uint("t", 5, "timeout in seconds")
-	portList := flag.String("p", "80,433", "comma seperated list of ports to probe")
+	portList := flag.String("p", "443,80", "comma seperated list of ports to probe")
 	host := flag.String("h", "", "host header")
 	forwarded := flag.String("x", "", "X-Forwarded-For header")
 	customKey := flag.String("ck", "", "add a custom header to all requests (key)")
 	customVal := flag.String("cv", "", "add a custom header to all requests (value)")
-	insecure := flag.Bool("k", false, "ignore SSL errors")
+	insecure := flag.Bool("k", true, "ignore SSL errors")
 	userAgent := flag.String("a", "pokehttp: https://github.com/bruston/pokehttp", "user-agent header to use")
+	redirects := flag.Bool("f", true, "follow redirects")
 	flag.Parse()
 
 	if *domains == "" {
@@ -54,10 +55,13 @@ func main() {
 
 	client := &http.Client{
 		Timeout: time.Second * time.Duration(*timeout),
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
 	}
+	if !*redirects {
+		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		}
+	}
+
 	transport := &http.Transport{
 		MaxIdleConns:      30,
 		IdleConnTimeout:   time.Second,
