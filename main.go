@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"crypto/tls"
 	"flag"
 	"fmt"
@@ -10,12 +9,11 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/PuerkitoBio/goquery"
 )
 
 type stringSlice []string
@@ -135,6 +133,19 @@ func cleanPorts(p string) []string {
 	return ports
 }
 
+func getTitle(b []byte) string {
+	re := regexp.MustCompile(`(?mUi)<title\s*>\s*((.|\n|\r\n|)*)\s*<\/title\s*>`)
+	match := re.FindSubmatch(b)
+	if len(match) < 2 || len(match[1]) == 0 {
+		return ""
+	}
+	title := string(match[1])
+	title = strings.ReplaceAll(title, "\r\n", " ")
+	title = strings.ReplaceAll(title, "\n", " ")
+	title = strings.TrimSpace(title)
+	return title
+}
+
 func doReq(client *http.Client, url string, headers []string, userAgent string) (int, int, string, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -166,12 +177,6 @@ func doReq(client *http.Client, url string, headers []string, userAgent string) 
 		return 0, 0, "", err
 	}
 	size := len(b)
-	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(b))
-	if err != nil {
-		return 0, 0, "", err
-	}
-	title := doc.Find("title").Text()
-	title = strings.Replace(title, "\r\n", "", -1)
-	title = strings.Replace(title, "\n", "", -1)
+	title := getTitle(b)
 	return status, size, title, nil
 }
