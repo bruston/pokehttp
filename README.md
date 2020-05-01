@@ -10,7 +10,7 @@ Usage of pokehttp:
     -c uint
         number of concurrent requests (default 6)
     -d string
-        file containing list of domains or ip addresses seperated by newlines
+        file containing list of domains or ip addresses seperated by newlines, reads from stdin if not supplied
     -k  ignore SSL errors
     -p string
         comma seperated list of ports to probe (default "80,433")

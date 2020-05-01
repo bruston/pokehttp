@@ -6,8 +6,8 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"runtime"
@@ -34,7 +34,7 @@ func (s *stringSlice) Values() []string {
 }
 
 func main() {
-	domains := flag.String("d", "", "file containing list of domains or ip addresses seperated by newlines")
+	domains := flag.String("d", "", "file containing list of domains or ip addresses seperated by newlines, uses stdin if left empty")
 	workers := flag.Uint("c", uint(runtime.NumCPU()), "number of concurrent requests")
 	timeout := flag.Uint("t", 5, "timeout in seconds")
 	portList := flag.String("p", "443,80", "comma seperated list of ports to probe")
@@ -45,20 +45,21 @@ func main() {
 	flag.Var(headers, "H", "add a header to the request, eg: \"Foo: bar\", can be specified multiple times")
 	flag.Parse()
 
+	var input io.ReadCloser
 	if *domains == "" {
-		fmt.Println("Please specify a domain list with the -d flag.\n")
-		flag.PrintDefaults()
-		return
+		input = os.Stdin
+	} else {
+		f, err := os.Open(*domains)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error opening domain/url list: %v", err)
+			os.Exit(1)
+		}
+		input = f
 	}
-
-	f, err := os.Open(*domains)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer f.Close()
+	defer input.Close()
 
 	work := make(chan string)
-	s := bufio.NewScanner(f)
+	s := bufio.NewScanner(input)
 	go func() {
 		for s.Scan() {
 			work <- s.Text()
