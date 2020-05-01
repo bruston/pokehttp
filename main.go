@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"html"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -143,7 +144,7 @@ func getTitle(b []byte) string {
 	title = strings.ReplaceAll(title, "\r\n", " ")
 	title = strings.ReplaceAll(title, "\n", " ")
 	title = strings.TrimSpace(title)
-	return title
+	return html.UnescapeString(title)
 }
 
 func doReq(client *http.Client, url string, headers []string, userAgent string) (int, int, string, error) {
