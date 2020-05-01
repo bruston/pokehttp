@@ -9,25 +9,20 @@ Usage of pokehttp:
         user-agent header to use (default "pokehttp: https://github.com/bruston/pokehttp")
     -c uint
         number of concurrent requests (default 6)
-    -ck string
-        add a custom header to all requests (key)
-    -cv string
-        add a custom header to all requests (value)
     -d string
         file containing list of domains or ip addresses seperated by newlines
-    -h string
-        host header
     -k  ignore SSL errors
     -p string
         comma seperated list of ports to probe (default "80,433")
     -t uint
         timeout in seconds (default 5)
-    -x string
-        X-Forwarded-For header
+    -H string
+        add a header, eg: -H "Header-One: foo"
 ```
 
 # Example
 
 ```
-pokehttp -d subdomains.txt -p="80,443,8080" | tee -a subdomains.web
+pokehttp -d subdomains.txt -p="80,443,8080" -H "Header-One: foo" -H "Header-Two: bar" | tee -a subdomains.web
+```
 ```

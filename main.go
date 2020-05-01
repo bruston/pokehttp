@@ -18,18 +18,31 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
+type stringSlice []string
+
+func (s *stringSlice) Set(v string) error {
+	*s = append(*s, v)
+	return nil
+}
+
+func (s stringSlice) String() string {
+	return strings.Join(s, "\n")
+}
+
+func (s *stringSlice) Values() []string {
+	return *s
+}
+
 func main() {
 	domains := flag.String("d", "", "file containing list of domains or ip addresses seperated by newlines")
 	workers := flag.Uint("c", uint(runtime.NumCPU()), "number of concurrent requests")
 	timeout := flag.Uint("t", 5, "timeout in seconds")
 	portList := flag.String("p", "443,80", "comma seperated list of ports to probe")
-	host := flag.String("h", "", "host header")
-	forwarded := flag.String("x", "", "X-Forwarded-For header")
-	customKey := flag.String("ck", "", "add a custom header to all requests (key)")
-	customVal := flag.String("cv", "", "add a custom header to all requests (value)")
 	insecure := flag.Bool("k", true, "ignore SSL errors")
 	userAgent := flag.String("a", "pokehttp: https://github.com/bruston/pokehttp", "user-agent header to use")
 	redirects := flag.Bool("f", true, "follow redirects")
+	headers := &stringSlice{}
+	flag.Var(headers, "H", "add a header to the request, eg: \"Foo: bar\", can be specified multiple times")
 	flag.Parse()
 
 	if *domains == "" {
@@ -79,7 +92,7 @@ func main() {
 		go func() {
 			for v := range work {
 				if strings.HasPrefix(v, "http") {
-					code, size, title, err := doReq(client, v, *host, *forwarded, *customKey, *customVal, *userAgent)
+					code, size, title, err := doReq(client, v, headers.Values(), *userAgent)
 					if err != nil {
 						continue
 					}
@@ -97,7 +110,7 @@ func main() {
 						dst = append(dst, []string{fmt.Sprintf("http://%s:%s", v, port), fmt.Sprintf("https://%s:%s", v, port)}...)
 					}
 					for _, url := range dst {
-						code, size, title, err := doReq(client, url, *host, *forwarded, *customKey, *customVal, *userAgent)
+						code, size, title, err := doReq(client, url, headers.Values(), *userAgent)
 						if err != nil {
 							continue
 						}
@@ -121,22 +134,25 @@ func cleanPorts(p string) []string {
 	return ports
 }
 
-func doReq(client *http.Client, url, host, forwarded, customKey, customVal, userAgent string) (int, int, string, error) {
+func doReq(client *http.Client, url string, headers []string, userAgent string) (int, int, string, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return 0, 0, "", err
 	}
-	if host != "" {
-		req.Host = host
-	}
-	if forwarded != "" {
-		req.Header.Set("X-Forwarded-For", forwarded)
-	}
-	if customKey != "" {
-		req.Header.Set(customKey, customVal)
+	for _, v := range headers {
+		pair := strings.Split(v, ":")
+		if len(pair) == 1 {
+			req.Header.Add(pair[0], "")
+			continue
+		}
+		pair[1] = strings.TrimLeft(pair[1], " ")
+		if strings.ToLower(pair[0]) == "host" {
+			req.Host = pair[1]
+			continue
+		}
+		req.Header.Add(pair[0], strings.Join(pair[1:], ":"))
 	}
 	req.Header.Set("User-Agent", userAgent)
-	req.Header.Add("Connection", "close")
 	req.Close = true
 	resp, err := client.Do(req)
 	if err != nil {
