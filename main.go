@@ -90,7 +90,7 @@ func main() {
 		wg.Add(1)
 		go func() {
 			for v := range work {
-				if strings.HasPrefix(v, "http") {
+				if strings.HasPrefix(v, "https://") || strings.HasPrefix(v, "http://") {
 					code, size, title, err := doReq(client, v, headers.Values(), *userAgent)
 					if err != nil {
 						continue
